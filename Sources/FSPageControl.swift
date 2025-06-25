@@ -103,31 +103,41 @@ open class FSPageControl: UIControl {
     
     open override func layoutSublayers(of layer: CALayer) {
         super.layoutSublayers(of: layer)
-        
         let diameter = self.itemSpacing
         let spacing = self.interitemSpacing
+        
+        let contentWidth: CGFloat = {
+            var width: CGFloat = 0.0
+            for layer in self.indicatorLayers {
+                width += layer.path?.boundingBoxOfPath.width ?? diameter
+            }
+            width += CGFloat((self.indicatorLayers.count - 1)) * spacing
+            return width
+        }()
+        
         var x: CGFloat = {
             switch self.contentHorizontalAlignment {
             case .left, .leading:
                 return 0
             case .center, .fill:
                 let midX = self.contentView.bounds.midX
-                let amplitude = CGFloat(self.numberOfPages/2) * diameter + spacing*CGFloat((self.numberOfPages-1)/2)
-                return midX - amplitude
+                return midX - contentWidth * 0.5
             case .right, .trailing:
-                let contentWidth = diameter*CGFloat(self.numberOfPages) + CGFloat(self.numberOfPages-1)*spacing
                 return contentView.frame.width - contentWidth
             default:
                 return 0
             }
         }()
+        
         for (index,value) in self.indicatorLayers.enumerated() {
+            let width = value.path?.boundingBoxOfPath.width ?? diameter
+            let height = value.path?.boundingBoxOfPath.height ?? diameter
             let state: UIControl.State = (index == self.currentPage) ? .selected : .normal
             let image = self.images[state]
-            let size = image?.size ?? CGSize(width: diameter, height: diameter)
-            let origin = CGPoint(x: x - (size.width-diameter)*0.5, y: self.contentView.bounds.midY-size.height*0.5)
+            let size = image?.size ?? CGSize(width: width, height: height)
+            let origin = CGPoint(x: x - (size.width-width)*0.5, y: self.contentView.bounds.midY-size.height*0.5)
             value.frame = CGRect(origin: origin, size: size)
-            x = x + spacing + diameter
+            x = x + spacing + width
         }
         
     }
@@ -221,6 +231,8 @@ open class FSPageControl: UIControl {
         self.setNeedsLayout()
         DispatchQueue.main.async {
             self.updateIndicatorsIfNecessary()
+            // fix：iphone11 pro v17.5.1，更新indicators后没有调用layoutSublayers
+            self.setNeedsLayout()
         }
     }
     
