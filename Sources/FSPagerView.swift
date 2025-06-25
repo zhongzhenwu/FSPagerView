@@ -129,6 +129,15 @@ open class FSPagerView: UIView,UICollectionViewDataSource,UICollectionViewDelega
         }
     }
     
+    // 在banner中显示多项时，true: 调整item位置使其居中显示, false: 不调整
+    @IBInspectable
+    open var isItemAdjust: Bool = true {
+        didSet {
+            self.collectionViewLayout.isItemAdjust = isItemAdjust
+            self.collectionViewLayout.forceInvalidate()
+        }
+    }
+    
     /// An unsigned integer value that determines the deceleration distance of the pager view, which indicates the number of passing items during the deceleration. When the value of this property is FSPagerView.automaticDistance, the actual 'distance' is automatically calculated according to the scrolling speed of the pager view. Default is 1.
     @IBInspectable
     open var decelerationDistance: UInt = 1
@@ -252,6 +261,27 @@ open class FSPagerView: UIView,UICollectionViewDataSource,UICollectionViewDelega
         }
         return IndexPath(item: 0, section: 0)
     }
+    // 新增
+    fileprivate var leftmostIndexPath: IndexPath {
+        guard self.numberOfItems > 0, self.collectionView.contentSize != .zero else {
+            return IndexPath(item: 0, section: 0)
+        }
+        let sortedIndexPaths = self.collectionView.indexPathsForVisibleItems.sorted { (l, r) -> Bool in
+            let leftFrame = self.collectionViewLayout.frame(for: l)
+            let rightFrame = self.collectionViewLayout.frame(for: r)
+            switch self.scrollDirection {
+            case .horizontal:
+                return leftFrame.minX < rightFrame.minX
+            case .vertical:
+                return leftFrame.minY < rightFrame.minY
+            }
+        }
+        let indexPath = sortedIndexPaths.first
+        if let indexPath = indexPath {
+            return indexPath
+        }
+        return IndexPath(item: 0, section: 0)
+    }
     fileprivate var isPossiblyRotating: Bool {
         guard let animationKeys = self.contentView.layer.animationKeys() else {
             return false
@@ -278,6 +308,7 @@ open class FSPagerView: UIView,UICollectionViewDataSource,UICollectionViewDelega
         self.backgroundView?.frame = self.bounds
         self.contentView.frame = self.bounds
         self.collectionView.frame = self.contentView.bounds
+        self.collectionViewLayout.needsReprepare = true
     }
     
     open override func willMove(toWindow newWindow: UIWindow?) {
@@ -477,8 +508,15 @@ open class FSPagerView: UIView,UICollectionViewDataSource,UICollectionViewDelega
     /// Reloads all of the data for the collection view.
     @objc(reloadData)
     open func reloadData() {
-        self.collectionViewLayout.needsReprepare = true;
+        self.collectionViewLayout.needsReprepare = true
+        let indexPath = self.collectionView.indexPathsForVisibleItems.first
         self.collectionView.reloadData()
+        
+        // fix: 解决在reload时卡在一半的问题
+        if let indexPath = indexPath {
+            let offset = self.collectionViewLayout.contentOffset(for: indexPath)
+            self.collectionView.setContentOffset(offset, animated: false)
+        }
     }
     
     /// Selects the item at the specified index and optionally scrolls it into view.
@@ -561,6 +599,7 @@ open class FSPagerView: UIView,UICollectionViewDataSource,UICollectionViewDelega
         
         // UICollectionView
         let collectionViewLayout = FSPagerViewLayout()
+        collectionViewLayout.isItemAdjust = isItemAdjust
         let collectionView = FSPagerCollectionView(frame: CGRect.zero, collectionViewLayout: collectionViewLayout)
         collectionView.dataSource = self
         collectionView.delegate = self
@@ -585,7 +624,7 @@ open class FSPagerView: UIView,UICollectionViewDataSource,UICollectionViewDelega
             return
         }
         let contentOffset: CGPoint = {
-            let indexPath = self.centermostIndexPath
+            let indexPath = isItemAdjust ? self.centermostIndexPath : self.leftmostIndexPath
             let section = self.numberOfSections > 1 ? (indexPath.section+(indexPath.item+1)/self.numberOfItems) : 0
             let item = (indexPath.item+1) % self.numberOfItems
             return self.collectionViewLayout.contentOffset(for: IndexPath(item: item, section: section))

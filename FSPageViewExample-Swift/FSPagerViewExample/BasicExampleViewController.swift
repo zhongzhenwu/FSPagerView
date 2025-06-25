@@ -11,7 +11,7 @@ import UIKit
 class BasicExampleViewController: UIViewController,UITableViewDataSource,UITableViewDelegate,FSPagerViewDataSource,FSPagerViewDelegate {
     
     fileprivate let sectionTitles = ["Configurations", "Decelaration Distance", "Item Size", "Interitem Spacing", "Number Of Items"]
-    fileprivate let configurationTitles = ["Automatic sliding","Infinite"]
+    fileprivate let configurationTitles = ["Automatic sliding","Infinite","itemAdjust"]
     fileprivate let decelerationDistanceOptions = ["Automatic", "1", "2"]
     fileprivate let imageNames = ["1.jpg","2.jpg","3.jpg","4.jpg","5.jpg","6.jpg","7.jpg"]
     fileprivate var numberOfItems = 7
@@ -63,6 +63,9 @@ class BasicExampleViewController: UIViewController,UITableViewDataSource,UITable
             } else if indexPath.row == 1 {
                 // IsInfinite
                 cell.accessoryType = self.pagerView.isInfinite ? .checkmark : .none
+            } else if indexPath.row == 2 {
+                // isItemAdjust
+                cell.accessoryType = self.pagerView.isItemAdjust ? .checkmark : .none
             }
             return cell
         case 1:
@@ -130,6 +133,8 @@ class BasicExampleViewController: UIViewController,UITableViewDataSource,UITable
                 self.pagerView.automaticSlidingInterval = 3.0 - self.pagerView.automaticSlidingInterval
             } else if indexPath.row == 1 { // IsInfinite
                 self.pagerView.isInfinite = !self.pagerView.isInfinite
+            } else if indexPath.row == 2 {
+                self.pagerView.isItemAdjust = !self.pagerView.isItemAdjust
             }
             tableView.reloadSections([indexPath.section], with: .automatic)
         case 1:
